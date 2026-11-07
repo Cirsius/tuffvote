@@ -39,7 +39,7 @@ public class Config {
     @Comment("The message that should be broadcasted after a player has voted.")
     private String broadcastMessage = "%player% voted!";
 
-    @Comment("The message that should be broadcasted after a player has voted.")
+    @Comment("A list of service names the vote service should broadcast in the broadcast message.")
     private List<String> services = List.of();
 
 
