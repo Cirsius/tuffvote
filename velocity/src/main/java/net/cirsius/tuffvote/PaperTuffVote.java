@@ -1,4 +1,4 @@
-package net.cirsius.tuffvote.velocity;
+package net.cirsius.tuffvote;
 
 import com.google.inject.Inject;
 import com.mojang.brigadier.tree.CommandNode;
@@ -10,45 +10,45 @@ import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.plugin.Dependency;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
-import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.vexsoftware.votifier.model.Vote;
 import com.vexsoftware.votifier.velocity.event.VotifierEvent;
-import net.cirsius.tuffvote.TuffVote;
-import net.cirsius.tuffvote.records.Config;
-import net.cirsius.tuffvote.records.Platform;
+import lombok.Getter;
+import net.cirsius.tuffvote.config.Config;
+import net.cirsius.tuffvote.models.BaseConfig;
+import net.cirsius.tuffvote.models.Platform;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import net.md_5.bungee.api.CommandSender;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.spongepowered.configurate.ConfigurationNode;
-import org.spongepowered.configurate.yaml.YamlConfigurationLoader;
+import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.BiConsumer;
 
 @Plugin(id = "tuffvote", name = "TuffVote", version = "${version}",
         authors = {"cirsius"}, dependencies = {@Dependency(id = "nuvotifier", optional = true)})
-public class TuffVoteVelocity implements Platform {
+public class PaperTuffVote implements Platform {
 
+    @Getter private static PaperTuffVote instance;
     private final ProxyServer server;
     private final Path dataDirectory;
-    private final org.slf4j.Logger logger;
-    private TuffVote tuffVote;
+    private final Logger logger;
+    private VoteService service;
 
     @Inject
-    public TuffVoteVelocity(ProxyServer server, org.slf4j.Logger logger, @DataDirectory Path dataDirectory) {
+    public PaperTuffVote(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
         this.server = server;
         this.logger = logger;
         this.dataDirectory = dataDirectory;
+        instance = this;
     }
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
-        tuffVote = new TuffVote(this);
         server.getEventManager().register(this, this);
         server.getCommandManager().register(new CommandMeta() {
             @Override
@@ -68,13 +68,17 @@ public class TuffVoteVelocity implements Platform {
                 return null;
             }
         }, new ReloadCommand());
-        tuffVote.enable();
     }
 
     @Subscribe
     public void onVote(VotifierEvent event) {
         Vote vote = event.getVote();
-        tuffVote.handleVote(vote.getUsername(), vote.getServiceName());
+        service.handleVote(new BaseConfig(
+                           Config.i().getServices(),
+                           Config.i().getCommands(),
+                           Config.i().getBroadcastMessage(),
+                           this
+        ),  vote.getUsername(), vote.getServiceName());
     }
 
     @Override
@@ -85,17 +89,6 @@ public class TuffVoteVelocity implements Platform {
     @Override
     public InputStream resource(String name) {
         return getClass().getClassLoader().getResourceAsStream(name);
-    }
-
-    @Override
-    public Config loadConfig(File configFile) throws Exception {
-        YamlConfigurationLoader loader = YamlConfigurationLoader.builder().path(configFile.toPath()).build();
-        ConfigurationNode config = loader.load();
-        return new Config(
-                config.node("commands").getList(String.class),
-                config.node("services").getList(String.class),
-                config.node("broadcast_message").getString("")
-        );
     }
 
     @Override
@@ -119,9 +112,15 @@ public class TuffVoteVelocity implements Platform {
 
     private class ReloadCommand implements SimpleCommand {
 
+        static final BiConsumer<VoteService, CommandSource> cmd = (tuffVote, sender) -> {
+            if (sender instanceof CommandSource source) {
+                source.sendRichMessage("<yellow> config reloaded");
+            }
+        };
+
         @Override
         public void execute(Invocation invocation) {
-            net.cirsius.tuffvote.command.ReloadCommand.cmd().accept(tuffVote, invocation);
+            cmd.accept(service, invocation.source());
         }
     }
 }
