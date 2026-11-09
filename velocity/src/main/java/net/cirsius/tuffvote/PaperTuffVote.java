@@ -114,7 +114,7 @@ public class PaperTuffVote implements Platform {
 
         @Override
         public void execute(Invocation invocation) {   
-            if (sender instanceof CommandSource source) {
+            if (invocation instanceof CommandSource source) {
                 source.sendRichMessage("<yellow> config reloaded </yellow>");
             }
             Config.i().reload();    
