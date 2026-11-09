@@ -112,15 +112,13 @@ public class PaperTuffVote implements Platform {
 
     private class ReloadCommand implements SimpleCommand {
 
-        static final BiConsumer<VoteService, CommandSource> cmd = (tuffVote, sender) -> {
+        @Override
+        public void execute(Invocation invocation) {   
             if (sender instanceof CommandSource source) {
                 source.sendRichMessage("<yellow> config reloaded </yellow>");
             }
-        };
-
-        @Override
-        public void execute(Invocation invocation) {
-            cmd.accept(service, invocation.source());
+            Config.i().reload();    
         }
     }
+        
 }
