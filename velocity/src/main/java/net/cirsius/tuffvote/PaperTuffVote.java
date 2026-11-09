@@ -114,7 +114,7 @@ public class PaperTuffVote implements Platform {
 
         static final BiConsumer<VoteService, CommandSource> cmd = (tuffVote, sender) -> {
             if (sender instanceof CommandSource source) {
-                source.sendRichMessage("<yellow> config reloaded");
+                source.sendRichMessage("<yellow> config reloaded </yellow>");
             }
         };
 
